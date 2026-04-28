@@ -2,15 +2,15 @@ import streamlit as st
 import httpx
 from datetime import datetime
 import pandas as pd
+import random
+import string
 
-# --- CONSTANTS ---
-FOIL_MAP = {"Regular": "Regular", "Rainbow Foil": "Rainbow Foil", "Cold Foil": "Cold Foil", "Full Art": "Full Art", "Gold Cold Foil": "Gold Cold Foil"}
-PITCH_MAP = {1: "Red", 2: "Yellow", 3: "Blue"}
-
-# --- DATABASE CONFIG ---
-# We use st.secrets for security. Never hardcode keys in the script!
+# --- CONFIG & CONSTANTS ---
 URL = st.secrets["SUPABASE_URL"]
 KEY = st.secrets["SUPABASE_KEY"]
+
+# ⚠️ CHANGE THIS to your exact username so only you see the Admin tab!
+ADMIN_USERNAME = "ADMIN" 
 
 headers = {
     "apikey": KEY,
@@ -18,130 +18,186 @@ headers = {
     "Content-Type": "application/json",
 }
 
-# --- FUNCTIONS ---
-def check_user_exists(username):
+FOIL_MAP = {"r": "Rainbow Foil", "c": "Cold Foil", "reg": "Regular", "f": "Full Art", "g": "Gold Cold Foil"}
+PITCH_MAP = {1: "Red", 2: "Yellow", 3: "Blue"}
+
+# --- DB FUNCTIONS ---
+def verify_user(username, password):
     try:
-        url = f"{URL}/rest/v1/users?username=eq.{username}"
+        url = f"{URL}/rest/v1/users?username=eq.{username}&password=eq.{password}"
         resp = httpx.get(url, headers=headers)
         return len(resp.json()) > 0
     except: return False
 
-def register_user(username):
+def register_user(username, password, invite_code):
     try:
-        httpx.post(f"{URL}/rest/v1/users", headers=headers, json={"username": username})
-        return True
-    except: return False
+        # 1. Check if the code exists and hasn't been used
+        invite_url = f"{URL}/rest/v1/invites?code=eq.{invite_code}&is_used=eq.false"
+        invite_resp = httpx.get(invite_url, headers=headers).json()
+        
+        if not invite_resp:
+            return False, "❌ Invalid or already used Invite Key!"
+
+        # 2. Check if username is taken
+        user_check = httpx.get(f"{URL}/rest/v1/users?username=eq.{username}", headers=headers).json()
+        if user_check:
+            return False, "⚠️ Username already exists!"
+
+        # 3. Create the user
+        httpx.post(f"{URL}/rest/v1/users", headers=headers, 
+                   json={"username": username, "password": password})
+
+        # 4. Burn the invite code (Mark it as used)
+        httpx.patch(f"{URL}/rest/v1/invites?code=eq.{invite_code}", 
+                    headers=headers, json={"is_used": True})
+        
+        return True, "✅ Registration successful! Please log in."
+    except:
+        return False, "🛑 System error during registration."
+
+def process_bulk_logic(username, text_data):
+    lines = text_data.split('\n')
+    results = []
+    for line in lines:
+        parts = line.split()
+        if len(parts) < 3: continue
+        
+        card_code, f_key, qty = parts[0].upper(), parts[1].lower(), int(parts[2])
+        foil = FOIL_MAP.get(f_key, "Regular")
+        print_id = f"{card_code}-{foil}"
+        
+        payload = {"print_id": print_id, "qty_change": qty, "username": username, "updated_at": datetime.now().isoformat()}
+        resp = httpx.post(f"{URL}/rest/v1/inventories", headers=headers, json=payload)
+        results.append(f"{'✅' if resp.status_code in [200,201] else '❌'} {print_id}")
+    return results
 
 def get_inventory_data(username):
     query = "qty_change,print_id,card_prints(cards(name,pitch))"
     url = f"{URL}/rest/v1/inventories?username=eq.{username}&select={query}"
-    resp = httpx.get(url, headers=headers)
-    data = resp.json()
-    
-    if not data or isinstance(data, dict): return []
-
+    resp = httpx.get(url, headers=headers).json()
+    if not resp or isinstance(resp, dict): return []
     vault = {}
-    for entry in data:
-        pid = entry.get('print_id') or ""
-        qty = entry.get('qty_change', 0)
-        p_data = entry.get('card_prints') or {}
-        c_data = p_data.get('cards') or {}
-        
-        parts = pid.split('-', 1)
-        set_id = parts[0]
-        foil = parts[1] if len(parts) > 1 else "Regular"
-        
+    for entry in resp:
+        pid = entry.get('print_id', "")
+        p_data = entry.get('card_prints', {}) or {}
+        c_data = p_data.get('cards', {}) or {}
         if pid not in vault:
-            vault[pid] = {
-                "Name": c_data.get('name', 'Unknown'),
-                "Set": set_id,
-                "Foil": foil,
-                "Color": PITCH_MAP.get(c_data.get('pitch'), "N/A"),
-                "Total": 0
-            }
-        vault[pid]["Total"] += qty
-    
-    # Filter out zeros and return as list
+            parts = pid.split('-', 1)
+            vault[pid] = {"Name": c_data.get('name', '???'), "Set": parts[0], "Foil": parts[1] if len(parts)>1 else "Reg", "Color": PITCH_MAP.get(c_data.get('pitch'), "N/A"), "Total": 0}
+        vault[pid]["Total"] += entry.get('qty_change', 0)
     return [v for v in vault.values() if v["Total"] > 0]
 
-def add_card(username, card_id, foil, qty):
-    print_id = f"{card_id.upper()}-{foil}"
-    payload = {
-        "print_id": print_id, 
-        "qty_change": qty, 
-        "username": username, 
-        "updated_at": datetime.now().isoformat()
-    }
-    resp = httpx.post(f"{URL}/rest/v1/inventories", headers=headers, json=payload)
-    return resp.status_code in [200, 201]
+# --- ADMIN ONLY FUNCTIONS ---
+def get_unused_invites():
+    url = f"{URL}/rest/v1/invites?is_used=eq.false&select=code"
+    return httpx.get(url, headers=headers).json()
 
-# --- UI LAYOUT ---
-st.set_page_config(page_title="FaB Inventory 0.0.1", page_icon="🛡️")
+def generate_new_invite():
+    # Generates a random code like FAB-A79B12
+    code = "FAB-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    httpx.post(f"{URL}/rest/v1/invites", headers=headers, json={"code": code})
+    return code
 
-# Custom CSS to make it look better on mobile
-st.markdown("""<style> .stTabs [data-baseweb="tab-list"] { gap: 10px; } 
-            .stTabs [data-baseweb="tab"] { padding: 10px 20px; border-radius: 4px; } </style>""", unsafe_allow_html=True)
+# --- UI ---
+st.set_page_config(page_title="FaB Inventory v0.0.1", layout="centered")
 
-st.title("🛡️ FaB Inventory Tool")
+# Visual Header
+st.code("""
+╔═════════════════════════════════════════╗
+║        FaB_Inventory_Tool_0.0.1         ║
+╚═════════════════════════════════════════╝
+""", language="text")
 
-# --- LOGIN LOGIC ---
 if "username" not in st.session_state:
-    with st.container():
-        st.subheader("Login to your Vault")
-        user_in = st.text_input("Username").strip().upper()
-        col1, col2 = st.columns(2)
-        
-        if col1.button("Login", use_container_width=True):
-            if check_user_exists(user_in):
-                st.session_state.username = user_in
-                st.rerun()
+    mode = st.radio("Choose Mode", ["Login", "Register"], horizontal=True)
+    
+    with st.form("auth_form"):
+        u = st.text_input("Username").upper().strip()
+        p = st.text_input("Password", type="password")
+        inv = ""
+        if mode == "Register":
+            inv = st.text_input("Admin Invite Key")
+            
+        if st.form_submit_button(mode):
+            if mode == "Login":
+                if verify_user(u, p):
+                    st.session_state.username = u
+                    st.rerun()
+                else: st.error("Invalid credentials.")
             else:
-                st.error("User not found.")
-                
-        if col2.button("Register New", use_container_width=True):
-            if user_in and register_user(user_in):
-                st.success(f"Registered {user_in}!")
-            else:
-                st.error("Invalid username.")
+                ok, msg = register_user(u, p, inv)
+                if ok: st.success(msg)
+                else: st.error(msg)
     st.stop()
 
-# --- MAIN APP (AFTER LOGIN) ---
-username = st.session_state.username
-st.sidebar.caption(f"Logged in as: **{username}**")
+# --- APP INTERFACE ---
+st.sidebar.title(f"👤 {st.session_state.username}")
 if st.sidebar.button("Logout"):
     del st.session_state.username
     st.rerun()
 
-tab_add, tab_view = st.tabs(["➕ Add Cards", "🔍 My Collection"])
+# Dynamic tabs based on user privileges
+tabs = ["📑 Single Add", "📦 Bulk Paste", "🔍 My Collection"]
+if st.session_state.username == ADMIN_USERNAME:
+    tabs.append("🎟️ Manage Invites")
 
-with tab_add:
-    st.subheader("Quick Add")
-    c_id = st.text_input("Card ID", placeholder="e.g., PEN001").upper()
-    c_foil = st.selectbox("Foiling", list(FOIL_MAP.keys()))
-    c_qty = st.number_input("Quantity", min_value=1, value=1)
+tab_objects = st.tabs(tabs)
+
+# 1. Single Add Tab
+with tab_objects[0]:
+    with st.form("single_add"):
+        c1, c2, c3 = st.columns([2,2,1])
+        cid = c1.text_input("Card ID (PEN001)")
+        f_choice = c2.selectbox("Foil", ["reg", "r", "c", "f", "g"])
+        q = c3.number_input("Qty", min_value=1, value=1)
+        if st.form_submit_button("Add Card"):
+            foil_full = FOIL_MAP.get(f_choice)
+            payload = {"print_id": f"{cid.upper()}-{foil_full}", "qty_change": q, "username": st.session_state.username, "updated_at": datetime.now().isoformat()}
+            httpx.post(f"{URL}/rest/v1/inventories", headers=headers, json=payload)
+            st.toast(f"Added {cid}!")
+
+# 2. Bulk Paste Tab
+with tab_objects[1]:
+    st.info("Format: `ID FOIL QTY` (One per line)\nExample:\n`PEN001 reg 4`\n`WTR002 r 1`")
+    bulk_text = st.text_area("Paste List Here", height=200)
+    if st.button("Process Bulk Upload"):
+        if bulk_text:
+            with st.spinner("Uploading..."):
+                results = process_bulk_logic(st.session_state.username, bulk_text)
+                st.success(f"Processed {len(results)} lines.")
+                with st.expander("View Logs"):
+                    for r in results: st.write(r)
+
+# 3. Collection Tab
+with tab_objects[2]:
+    col_a, col_b = st.columns([3,1])
+    search = col_a.text_input("Filter by Name/Set")
+    if col_b.button("🔄 Refresh"):
+        st.session_state.inv_data = get_inventory_data(st.session_state.username)
     
-    if st.button("Save to Vault", use_container_width=True):
-        if c_id:
-            with st.spinner("Syncing..."):
-                if add_card(username, c_id, c_foil, c_qty):
-                    st.success(f"Added {c_qty}x {c_id}!")
-                else:
-                    st.error("Card ID not found in database.")
-        else:
-            st.warning("Please enter a Card ID.")
-
-with tab_view:
-    search = st.text_input("Filter by Name or Set", placeholder="e.g., WTR or Scar")
-    
-    if st.button("Refresh Collection", use_container_width=True):
-        st.session_state.data = get_inventory_data(username)
-
-    if "data" in st.session_state:
-        df = pd.DataFrame(st.session_state.data)
+    if "inv_data" in st.session_state:
+        df = pd.DataFrame(st.session_state.inv_data)
         if not df.empty:
             if search:
                 df = df[df['Name'].str.contains(search, case=False) | df['Set'].str.contains(search, case=False)]
-            
             st.dataframe(df, use_container_width=True, hide_index=True)
+
+# 4. Admin Invites Tab (Only visible to you!)
+if st.session_state.username == ADMIN_USERNAME:
+    with tab_objects[3]:
+        st.subheader("Generate One-Time Invite Keys")
+        
+        if st.button("Create New Key", use_container_width=True):
+            new_key = generate_new_invite()
+            st.success(f"Key Created: `{new_key}`")
+            st.caption("Copy this and send it to your friend.")
+            
+        st.divider()
+        st.subheader("Active/Unused Keys")
+        invites = get_unused_invites()
+        
+        if invites:
+            for item in invites:
+                st.code(item['code'], language="text")
         else:
-            st.info("Your vault is empty.")
+            st.caption("No active keys. Click the button above to generate one.")
