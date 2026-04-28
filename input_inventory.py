@@ -38,7 +38,7 @@ def local_css():
     <style>
     [data-testid="stAppViewContainer"] {{
         background-color: #000000 !important;
-        background-image: url("https://i.ibb.co/v6yM8Z8/image.png") !important; 
+        /*background-image: url("https://i.ibb.co/v6yM8Z8/image.png") !important; */
         background-size: contain !important;
         background-repeat: no-repeat !important;
         background-position: center top !important;
