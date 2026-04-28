@@ -89,13 +89,18 @@ def register_user(username, password, invite_code):
     try:
         invite_url = f"{URL}/rest/v1/invites?code=eq.{invite_code}&is_used=eq.false"
         invite_resp = httpx.get(invite_url, headers=headers).json()
-        if not invite_resp or not isinstance(invite_resp, list): return False, "❌ Invalid/Used Key"
+        
+        if not invite_resp or not isinstance(invite_resp, list) or len(invite_resp) == 0:
+            return False, "❌ Invalid/Used Key"
         
         user_check = httpx.get(f"{URL}/rest/v1/users?username=eq.{username}", headers=headers).json()
         if user_check: return False, "⚠️ Name Taken"
 
+        # Create user
         httpx.post(f"{URL}/rest/v1/users", headers=headers, json={"username": username, "password": password})
+        # Burn invite key
         httpx.patch(f"{URL}/rest/v1/invites?code=eq.{invite_code}", headers=headers, json={"is_used": True})
+        
         return True, "✅ Registration Complete!"
     except: return False, "🛑 Error"
 
