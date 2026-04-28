@@ -2,14 +2,14 @@ import streamlit as st
 import httpx
 from datetime import datetime
 import pandas as pd
-import random
+import secrets
 import string
 
 # --- CONFIG & CONSTANTS ---
 URL = st.secrets["SUPABASE_URL"]
 KEY = st.secrets["SUPABASE_KEY"]
 
-# ⚠️ CHANGE THIS to your exact username so only you see the Admin tab!
+# Change this to whatever username you want to be the "Boss"
 ADMIN_USERNAME = "ADMIN" 
 
 headers = {
@@ -31,7 +31,7 @@ def verify_user(username, password):
 
 def register_user(username, password, invite_code):
     try:
-        # 1. Check if the code exists and hasn't been used
+        # 1. Check if the code exists and hasn't been used yet
         invite_url = f"{URL}/rest/v1/invites?code=eq.{invite_code}&is_used=eq.false"
         invite_resp = httpx.get(invite_url, headers=headers).json()
         
@@ -40,20 +40,35 @@ def register_user(username, password, invite_code):
 
         # 2. Check if username is taken
         user_check = httpx.get(f"{URL}/rest/v1/users?username=eq.{username}", headers=headers).json()
-        if user_check:
-            return False, "⚠️ Username already exists!"
-
+        if user_check: 
+            return False, "⚠️ Username already taken!"
+        
         # 3. Create the user
         httpx.post(f"{URL}/rest/v1/users", headers=headers, 
                    json={"username": username, "password": password})
-
-        # 4. Burn the invite code (Mark it as used)
+        
+        # 4. Burn the invite key
         httpx.patch(f"{URL}/rest/v1/invites?code=eq.{invite_code}", 
                     headers=headers, json={"is_used": True})
         
-        return True, "✅ Registration successful! Please log in."
-    except:
+        return True, "✅ Success! You can now log in."
+    except: 
         return False, "🛑 System error during registration."
+
+def create_new_invite():
+    # Generates a random 6-character code like "FAB-X8K9P2"
+    random_str = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    code = f"FAB-{random_str}"
+    try:
+        httpx.post(f"{URL}/rest/v1/invites", headers=headers, json={"code": code})
+        return code
+    except: return None
+
+def get_all_invites():
+    try:
+        url = f"{URL}/rest/v1/invites?select=code,is_used,created_at&order=created_at.desc"
+        return httpx.get(url, headers=headers).json()
+    except: return []
 
 def process_bulk_logic(username, text_data):
     lines = text_data.split('\n')
@@ -87,19 +102,8 @@ def get_inventory_data(username):
         vault[pid]["Total"] += entry.get('qty_change', 0)
     return [v for v in vault.values() if v["Total"] > 0]
 
-# --- ADMIN ONLY FUNCTIONS ---
-def get_unused_invites():
-    url = f"{URL}/rest/v1/invites?is_used=eq.false&select=code"
-    return httpx.get(url, headers=headers).json()
-
-def generate_new_invite():
-    # Generates a random code like FAB-A79B12
-    code = "FAB-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    httpx.post(f"{URL}/rest/v1/invites", headers=headers, json={"code": code})
-    return code
-
-# --- UI ---
-st.set_page_config(page_title="FaB Inventory v0.0.1", layout="centered")
+# --- UI LAYOUT ---
+st.set_page_config(page_title="FaB Inventory 0.0.1", layout="centered")
 
 # Visual Header
 st.code("""
@@ -108,6 +112,7 @@ st.code("""
 ╚═════════════════════════════════════════╝
 """, language="text")
 
+# --- AUTHENTICATION SCREEN ---
 if "username" not in st.session_state:
     mode = st.radio("Choose Mode", ["Login", "Register"], horizontal=True)
     
@@ -116,64 +121,69 @@ if "username" not in st.session_state:
         p = st.text_input("Password", type="password")
         inv = ""
         if mode == "Register":
-            inv = st.text_input("Admin Invite Key")
+            inv = st.text_input("Invite Key")
             
         if st.form_submit_button(mode):
             if mode == "Login":
                 if verify_user(u, p):
                     st.session_state.username = u
                     st.rerun()
-                else: st.error("Invalid credentials.")
+                else: 
+                    st.error("Invalid credentials.")
             else:
-                ok, msg = register_user(u, p, inv)
-                if ok: st.success(msg)
-                else: st.error(msg)
+                if u and p and inv:
+                    ok, msg = register_user(u, p, inv)
+                    if ok: st.success(msg)
+                    else: st.error(msg)
+                else:
+                    st.warning("Please fill in all fields.")
     st.stop()
 
-# --- APP INTERFACE ---
-st.sidebar.title(f"👤 {st.session_state.username}")
+# --- MAIN APP (AFTER LOGIN) ---
+username = st.session_state.username
+st.sidebar.title(f"👤 {username}")
 if st.sidebar.button("Logout"):
     del st.session_state.username
     st.rerun()
 
-# Dynamic tabs based on user privileges
-tabs = ["📑 Single Add", "📦 Bulk Paste", "🔍 My Collection"]
-if st.session_state.username == ADMIN_USERNAME:
-    tabs.append("🎟️ Manage Invites")
+# Determine which tabs to show
+tabs_list = ["📑 Single Add", "📦 Bulk Paste", "🔍 My Collection"]
+if username == ADMIN_USERNAME:
+    tabs_list.append("🔑 Admin Controls")
 
-tab_objects = st.tabs(tabs)
+tabs = st.tabs(tabs_list)
 
-# 1. Single Add Tab
-with tab_objects[0]:
+# Tab 1: Single Add
+with tabs[0]:
     with st.form("single_add"):
         c1, c2, c3 = st.columns([2,2,1])
-        cid = c1.text_input("Card ID (PEN001)")
+        cid = c1.text_input("Card ID (e.g. PEN001)")
         f_choice = c2.selectbox("Foil", ["reg", "r", "c", "f", "g"])
         q = c3.number_input("Qty", min_value=1, value=1)
         if st.form_submit_button("Add Card"):
             foil_full = FOIL_MAP.get(f_choice)
-            payload = {"print_id": f"{cid.upper()}-{foil_full}", "qty_change": q, "username": st.session_state.username, "updated_at": datetime.now().isoformat()}
+            payload = {"print_id": f"{cid.upper()}-{foil_full}", "qty_change": q, "username": username, "updated_at": datetime.now().isoformat()}
             httpx.post(f"{URL}/rest/v1/inventories", headers=headers, json=payload)
             st.toast(f"Added {cid}!")
 
-# 2. Bulk Paste Tab
-with tab_objects[1]:
+# Tab 2: Bulk Paste
+with tabs[1]:
     st.info("Format: `ID FOIL QTY` (One per line)\nExample:\n`PEN001 reg 4`\n`WTR002 r 1`")
     bulk_text = st.text_area("Paste List Here", height=200)
     if st.button("Process Bulk Upload"):
         if bulk_text:
             with st.spinner("Uploading..."):
-                results = process_bulk_logic(st.session_state.username, bulk_text)
+                results = process_bulk_logic(username, bulk_text)
                 st.success(f"Processed {len(results)} lines.")
                 with st.expander("View Logs"):
                     for r in results: st.write(r)
 
-# 3. Collection Tab
-with tab_objects[2]:
+# Tab 3: View Collection
+with tabs[2]:
     col_a, col_b = st.columns([3,1])
     search = col_a.text_input("Filter by Name/Set")
     if col_b.button("🔄 Refresh"):
-        st.session_state.inv_data = get_inventory_data(st.session_state.username)
+        st.session_state.inv_data = get_inventory_data(username)
     
     if "inv_data" in st.session_state:
         df = pd.DataFrame(st.session_state.inv_data)
@@ -182,22 +192,25 @@ with tab_objects[2]:
                 df = df[df['Name'].str.contains(search, case=False) | df['Set'].str.contains(search, case=False)]
             st.dataframe(df, use_container_width=True, hide_index=True)
 
-# 4. Admin Invites Tab (Only visible to you!)
-if st.session_state.username == ADMIN_USERNAME:
-    with tab_objects[3]:
-        st.subheader("Generate One-Time Invite Keys")
+# Tab 4: Admin Controls (Hidden from non-admins)
+if username == ADMIN_USERNAME:
+    with tabs[3]:
+        st.subheader("Generate New Invite Key")
+        if st.button("✨ Create One-Time Key"):
+            new_code = create_new_invite()
+            if new_code:
+                st.success(f"Code Created! Copy this: `{new_code}`")
+            else:
+                st.error("Failed to generate code.")
         
-        if st.button("Create New Key", use_container_width=True):
-            new_key = generate_new_invite()
-            st.success(f"Key Created: `{new_key}`")
-            st.caption("Copy this and send it to your friend.")
-            
         st.divider()
-        st.subheader("Active/Unused Keys")
-        invites = get_unused_invites()
+        st.subheader("Existing Keys Status")
         
-        if invites:
-            for item in invites:
-                st.code(item['code'], language="text")
+        raw_invites = get_all_invites()
+        if raw_invites:
+            # Convert to DataFrame for easy reading
+            inv_df = pd.DataFrame(raw_invites)
+            inv_df['is_used'] = inv_df['is_used'].apply(lambda x: "🔴 Used" if x else "🟢 Active")
+            st.dataframe(inv_df, use_container_width=True, hide_index=True)
         else:
-            st.caption("No active keys. Click the button above to generate one.")
+            st.info("No keys generated yet.")
