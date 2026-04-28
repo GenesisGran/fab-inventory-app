@@ -34,7 +34,7 @@ def local_css():
     /* 1. Apply background to the very base layer */
     [data-testid="stAppViewContainer"] {{
         background-color: #000000 !important;
-        background-image: url("https://mktg-assets.tcgplayer.com/fit-in/1000x1000/filters:quality(75)/content/opengraph/CompendiumOG.jpg") !important; /* Hosted version of your uploaded image */
+        /*background-image: url("https://mktg-assets.tcgplayer.com/fit-in/1000x1000/filters:quality(75)/content/opengraph/CompendiumOG.jpg") !important; Hosted version of your uploaded image */
         background-size: contain !important;
         background-repeat: no-repeat !important;
         background-position: center top !important;
