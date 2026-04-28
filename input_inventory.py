@@ -29,37 +29,50 @@ PITCH_MAP = {1: "🔴 Red", 2: "🟡 Yellow", 3: "🔵 Blue"}
 
 # --- CUSTOM CSS ---
 def local_css():
-    # Using the provided image as a background
     st.markdown(f"""
     <style>
-    .stApp {{
-        background-color: #000000;
-        background-image: url("https://fabtcg.com/static/images/hero-backgrounds/enigma.original.jpg");
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center top;
-        background-attachment: fixed;
+    /* 1. Apply background to the very base layer */
+    [data-testid="stAppViewContainer"] {{
+        background-color: #000000 !important;
+        background-image: url("https://mktg-assets.tcgplayer.com/fit-in/1000x1000/filters:quality(75)/content/opengraph/CompendiumOG.jpg") !important; /* Hosted version of your uploaded image */
+        background-size: contain !important;
+        background-repeat: no-repeat !important;
+        background-position: center top !important;
+        background-attachment: fixed !important;
     }}
 
-    /* Container Styling */
-    div[data-testid="stVerticalBlock"] > div:has(div.stButton) {{
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(8px);
-        border-radius: 12px;
+    /* 2. Make the main content area transparent so background shows through */
+    [data-testid="stHeader"], [data-testid="stAppViewBlockContainer"] {{
+        background: rgba(0,0,0,0) !important;
+    }}
+
+    /* 3. Darken the panels so text is readable over the white background parts */
+    div[data-testid="stVerticalBlock"] > div:has(div.stButton), .stTabs {{
+        background: rgba(0, 0, 0, 0.85) !important;
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
         padding: 20px;
-        border: 1px solid rgba(212, 175, 55, 0.3);
+        border: 1px solid rgba(212, 175, 55, 0.4);
         margin-bottom: 20px;
     }}
 
-    h1, h2, h3 {{
-        color: #d4af37 !important; /* Gold headers */
-        text-align: center;
+    /* 4. Fix Tab coloring for visibility */
+    button[data-baseweb="tab"] {{
+        color: white !important;
+    }}
+    button[aria-selected="true"] {{
+        background-color: rgba(212, 175, 55, 0.2) !important;
+        border-bottom: 2px solid #d4af37 !important;
     }}
 
-    .stButton > button {{
-        background-color: #d4af37;
-        color: black;
-        font-weight: bold;
+    /* 5. Headers and Text */
+    h1, h2, h3 {{
+        color: #d4af37 !important;
+        text-shadow: 2px 2px 8px #000000;
+    }}
+    
+    .stMarkdown, p, span {{
+        color: #ffffff !important;
     }}
     </style>
     """, unsafe_allow_html=True)
