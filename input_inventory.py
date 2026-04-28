@@ -262,28 +262,57 @@ def get_inventory(username: str) -> pd.DataFrame:
 
     Returns an empty DataFrame when no records are found.
     """
+    # Try a few username casings since Postgres string equality is case-sensitive
+    for uname in (username, username.upper(), username.lower()):
+        data = api_request(
+            "GET",
+            "inventory_view",
+            HEADERS_ANON,
+            params={"username": f"eq.{uname}", "select": "*"},
+        )
+        if isinstance(data, list) and data:
+            df = pd.DataFrame(data)
+            df_agg = (
+                df.groupby(["card_name", "set_name", "foiling", "print_id"])["quantity"]
+                .sum()
+                .reset_index()
+            )
+            df_agg = df_agg[df_agg["quantity"] != 0]
+            return df_agg.rename(
+                columns={
+                    "card_name": "Card",
+                    "set_name": "Set",
+                    "foiling": "Finish",
+                    "quantity": "Qty",
+                }
+            )
 
-    data = api_request(
-        "GET", "inventory_view", HEADERS_ANON, params={"username": f"eq.{username}", "select": "*"}
-    )
-    if not isinstance(data, list) or not data:
-        return pd.DataFrame()
+    # Safe fallback: fetch all rows, then filter client-side by username if the
+    # view includes a username column. This avoids returning other users' data
+    # while helping diagnose cases where the server-side filter failed.
+    data_all = api_request("GET", "inventory_view", HEADERS_ANON, params={"select": "*"})
+    if isinstance(data_all, list) and data_all:
+        df_all = pd.DataFrame(data_all)
+        if "username" in df_all.columns:
+            df_user = df_all[df_all["username"].str.lower() == username.lower()]
+            if not df_user.empty:
+                df_agg = (
+                    df_user.groupby(["card_name", "set_name", "foiling", "print_id"])["quantity"]
+                    .sum()
+                    .reset_index()
+                )
+                df_agg = df_agg[df_agg["quantity"] != 0]
+                logger.info("Fetched inventory via safe fallback for user %s", username)
+                return df_agg.rename(
+                    columns={
+                        "card_name": "Card",
+                        "set_name": "Set",
+                        "foiling": "Finish",
+                        "quantity": "Qty",
+                    }
+                )
 
-    df = pd.DataFrame(data)
-    df_agg = (
-        df.groupby(["card_name", "set_name", "foiling", "print_id"]) ["quantity"]
-        .sum()
-        .reset_index()
-    )
-    df_agg = df_agg[df_agg["quantity"] != 0]
-    return df_agg.rename(
-        columns={
-            "card_name": "Card",
-            "set_name": "Set",
-            "foiling": "Finish",
-            "quantity": "Qty",
-        }
-    )
+    return pd.DataFrame()
 
 
 # --- APP ---
@@ -421,13 +450,24 @@ with tabs[1]:
 
 with tabs[2]:
     inv_df = get_inventory(st.session_state.username)
+
+    # Refresh control
+    if st.button("Refresh Inventory"):
+        st.experimental_rerun()
+
     if not inv_df.empty:
-        filter_text = st.text_input("Filter...")
-        if filter_text:
-            inv_df = inv_df[inv_df["Card"].str.lower().str.contains(filter_text.lower())]
+        search_text = st.text_input("Search by card name, set, or print id...")
+        if search_text:
+            pattern = search_text.lower()
+            mask = pd.Series(False, index=inv_df.index)
+            for col in ("Card", "Set", "Finish", "print_id"):
+                if col in inv_df.columns:
+                    mask = mask | inv_df[col].astype(str).str.lower().str.contains(pattern)
+            inv_df = inv_df[mask]
+
         st.dataframe(inv_df, use_container_width=True, hide_index=True)
     else:
-        st.info("Your vault is currently empty.")
+        st.info("Your vault is currently empty. If you expect data, press 'Refresh Inventory'.")
 
 
 if st.session_state.username == ADMIN_USERNAME and len(tabs) >= 4:
