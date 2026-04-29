@@ -1,7 +1,8 @@
 # FAB Vault: AI-Augmented TCG Inventory System
 
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://fab-inventory.streamlit.app/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791.svg)](https://www.postgresql.org/)
+[![Supabase](https://img.shields.io/badge/Database-Supabase-green.svg)](https://supabase.com/)
 
 **[🚀 View Live Demo](https://fab-inventory.streamlit.app/)**
 
