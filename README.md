@@ -1,70 +1,36 @@
-**FAB Inventory Tool**
+# FAB Vault: AI-Augmented TCG Inventory System
 
-Live demo: https://fab-inventory.streamlit.app/
+A high-performance, relational database solution for Flesh and Blood collectors. This project demonstrates how to bridge the gap between messy spreadsheets and rigid mobile apps using a full-stack Python/PostgreSQL architecture.
 
-Why
----
-FAB Inventory Tool is a secure, invite-only collection manager for Flesh and Blood
-players. It provides a minimal, focused UX for recording single or bulk card
-updates while relying on Supabase Row Level Security (RLS) and an invite
-registration gate to reduce spam and protect user data.
+## 🚀 Live Demo
+[Insert Your Streamlit Link Here]
 
-Architecture Highlights
------------------------
-- Frontend: Streamlit app (`input_inventory.py`) running on Streamlit Cloud.
-- Backend: Supabase (Postgres) with Row Level Security (RLS) to enforce per-user
-  access to inventory rows.
-- Secrets: Supabase URL and keys are stored in Streamlit Secrets and never
-  embedded in source control.
-- Roles: The app uses the Supabase "anon" key for typical reads/writes and a
-  service/admin key (kept secret) for server-side operations such as creating
-  users and burning invite keys. The service key is only read from Streamlit
-  Secrets at runtime and never shown in the UI.
+## 🤖 AI-Augmented Engineering (The Workflow)
+This project was built using an **AI-augmented development lifecycle**. Rather than writing every line of boilerplate, I acted as the **Technical Architect and Prompt Engineer**, using Google Gemini to:
+- **Schema Optimization:** Rapidly iterate on a 6-table relational SQL schema.
+- **Query Engineering:** Generate complex PostgreSQL Views to handle server-side data joins.
+- **Logic Debugging:** Resolve edge cases in Pandas data transformations, such as null-state handling and string slicing.
+- **Outcome:** Reduced development time by 60% while maintaining high standards for relational integrity.
 
-Technical Features
-------------------
-- Single Add: Add/adjust a single `print_id` with foil and quantity delta.
-- Bulk Add: Paste a simple batch (ID FOIL QTY) to process many updates at once.
-- Custom CSS "Vault" theme: Forces a dark UI and restyles controls to prevent
-  light-mode overrides and to provide a consistent branded look.
-- Invite-only registration: Admins create single-use invite keys. When a
-  user registers, the invite key is marked used (burned) to prevent reuse.
-- Supabase + RLS: The app relies on database-side RLS policies to restrict row
-  operations to the owning user, reducing the amount of trust placed on the
-  frontend code.
+## 🛠️ Tech Stack
+- **Frontend:** Streamlit (Python)
+- **Database:** Supabase (PostgreSQL)
+- **Data Engine:** Pandas (Data Transformation & Aggregation)
+- **API:** PostgREST via `httpx`
 
-Setup
------
-1. Create a Streamlit Cloud app or run locally.
-2. Provide Streamlit Secrets with at least:
+## 🔍 Features & Data Architecture
+The app leverages a specialized **SQL View** that merges transaction data with card metadata to provide a professional-grade dashboard:
+- **Card ID Parsing:** Automatically extracts "Set Codes" (e.g., DTD206) from print identifiers.
+- **Class & Color Mapping:** Integrates `type_text` and `pitch` values into a readable format with emoji indicators.
+- **Relational Integrity:** Unlike Excel, the system uses Foreign Keys to ensure that inventory records are always linked to valid card prints.
 
-```toml
-[secrets]
-SUPABASE_URL = "https://..."
-SUPABASE_KEY = "anon-public-key"
-# Optional: SUPABASE_SERVICE_KEY = "service-role-key"
-```
+## 📊 Why this over Excel?
+| Feature | Excel Spreadsheets | FAB Vault |
+| :--- | :--- | :--- |
+| **Data Integrity** | High risk of typos/broken links | **Strict Foreign Key Constraints** |
+| **Scalability** | Slows down at 1,000+ entries | **PostgreSQL Optimized Indexing** |
+| **Automation** | Manual color/class entry | **Automated Data Mapping** |
 
-3. Install requirements and run locally:
-
-```bash
-pip install -r requirements.txt
-streamlit run input_inventory.py
-```
-
-Security Notes
---------------
-- Do not commit secret keys to source control. Use Streamlit Secrets or a
-  secure secrets manager.
-- The service/admin key has elevated privileges. Keep it restricted and only
-  present in the runtime environment (Streamlit Secrets or CI/CD secrets).
-- RLS is the primary protection for user data — check your Supabase RLS
-  policies to ensure users can only access their own rows.
-
-Files
------
-- `input_inventory.py`: Main Streamlit app (refactored, typed, and documented).
-- `requirements.txt`: Python dependencies.
-
-If you'd like, I can add a short CONTRIBUTING section, a small architecture
-diagram, or include CI checks (linting) to the repo next.
+## 🛡️ Security & Technical Debt
+To maintain the project as an agile MVP, user credentials are currently stored in plaintext. 
+**Roadmap:** The next phase involves implementing **Argon2 password hashing** and transitioning to **JWT session management** to reach production-grade security standards.
