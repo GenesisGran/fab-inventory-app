@@ -1,36 +1,40 @@
 # FAB Vault: AI-Augmented TCG Inventory System
 
-A high-performance, relational database solution for Flesh and Blood collectors. This project demonstrates how to bridge the gap between messy spreadsheets and rigid mobile apps using a full-stack Python/PostgreSQL architecture.
+[![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://fab-inventory.streamlit.app/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791.svg)](https://www.postgresql.org/)
 
-## 🚀 Live Demo
-https://fab-inventory.streamlit.app/
+**[🚀 View Live Demo](https://fab-inventory.streamlit.app/)**
 
-## 🤖 AI-Augmented Engineering (The Workflow)
-This project was built using an **AI-augmented development lifecycle**. Rather than writing every line of boilerplate, I acted as the **Technical Architect and Prompt Engineer**, using Google Gemini to:
-- **Schema Optimization:** Rapidly iterate on a 6-table relational SQL schema.
-- **Query Engineering:** Generate complex PostgreSQL Views to handle server-side data joins.
-- **Logic Debugging:** Resolve edge cases in Pandas data transformations, such as null-state handling and string slicing.
-- **Outcome:** Reduced development time by 60% while maintaining high standards for relational integrity.
+FAB Vault is a high-performance, relational database solution for Flesh and Blood collectors. It bridges the gap between chaotic spreadsheets and rigid mobile apps by providing a professional-grade dashboard powered by a full-stack Python/PostgreSQL architecture.
+
+## 🤖 AI-Augmented Engineering
+This project was developed using a modern **AI-augmented development lifecycle**. As the Technical Architect, I leveraged Google Gemini to accelerate delivery:
+* **Schema Optimization:** Rapidly iterated on a 6-table relational SQL schema to ensure 3NF compliance and data integrity.
+* **Query Engineering:** Generated complex **PostgreSQL Views** to handle server-side data joins, minimizing client-side latency.
+* **Logic Debugging:** Resolved edge cases in Pandas data transformations, specifically regarding null-state handling and card ID parsing.
+* **Outcome:** Reduced development time by 60% while maintaining high standards for relational integrity.
 
 ## 🛠️ Tech Stack
-- **Frontend:** Streamlit (Python)
-- **Database:** Supabase (PostgreSQL)
-- **Data Engine:** Pandas (Data Transformation & Aggregation)
-- **API:** PostgREST via `httpx`
+* **Frontend:** Streamlit (Python)
+* **Database:** Supabase (PostgreSQL)
+* **Data Engine:** Pandas (Data Transformation & Aggregation)
+* **API:** PostgREST via `httpx`
 
-## 🔍 Features & Data Architecture
-The app leverages a specialized **SQL View** that merges transaction data with card metadata to provide a professional-grade dashboard:
-- **Card ID Parsing:** Automatically extracts "Set Codes" (e.g., DTD206) from print identifiers.
-- **Class & Color Mapping:** Integrates `type_text` and `pitch` values into a readable format with emoji indicators.
-- **Relational Integrity:** Unlike Excel, the system uses Foreign Keys to ensure that inventory records are always linked to valid card prints.
+## 🔍 Data Architecture & Features
+The app leverages specialized **SQL Views** that merge transaction data with card metadata for real-time reporting:
+* **Card ID Parsing:** Automatically extracts "Set Codes" (e.g., DTD206) from print identifiers.
+* **Class & Color Mapping:** Integrates `type_text` and `pitch` values into a readable format with emoji indicators.
+* **Relational Integrity:** Unlike Excel, the system uses Foreign Keys to ensure inventory records are always linked to valid card prints.
 
 ## 📊 Why this over Excel?
 | Feature | Excel Spreadsheets | FAB Vault |
 | :--- | :--- | :--- |
 | **Data Integrity** | High risk of typos/broken links | **Strict Foreign Key Constraints** |
-| **Scalability** | Slows down at 1,000+ entries | **PostgreSQL Optimized Indexing** |
-| **Automation** | Manual color/class entry | **Automated Data Mapping** |
+| **Scalability** | Performance degrades >1k rows | **PostgreSQL Optimized Indexing** |
+| **Automation** | Manual input for Color/Class | **Automated Metadata Mapping** |
 
-## 🛡️ Security & Technical Debt
-To maintain the project as an agile MVP, user credentials are currently stored in plaintext. 
-**Roadmap:** The next phase involves implementing **Argon2 password hashing** and transitioning to **JWT session management** to reach production-grade security standards.
+## 🛡️ Roadmap & Security
+To maintain agility as an MVP, user credentials are currently handled via a simple management system.
+* **Phase 2:** Implement **Argon2 password hashing**.
+* **Phase 3:** Transition to **JWT session management** for production-grade security.
+* **Phase 4:** Integrate TCGPlayer API for real-time portfolio valuation.
