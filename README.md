@@ -3,7 +3,7 @@
 A high-performance, relational database solution for Flesh and Blood collectors. This project demonstrates how to bridge the gap between messy spreadsheets and rigid mobile apps using a full-stack Python/PostgreSQL architecture.
 
 ## 🚀 Live Demo
-[Insert Your Streamlit Link Here]
+https://fab-inventory.streamlit.app/
 
 ## 🤖 AI-Augmented Engineering (The Workflow)
 This project was built using an **AI-augmented development lifecycle**. Rather than writing every line of boilerplate, I acted as the **Technical Architect and Prompt Engineer**, using Google Gemini to:
