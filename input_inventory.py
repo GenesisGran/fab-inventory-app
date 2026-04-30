@@ -39,36 +39,98 @@ BULK_FOIL_MAP = {"reg": "Regular", "r": "Rainbow Foil", "c": "Cold Foil", "f": "
 # --- THEME ---
 VAULT_CSS = """
 <style>
+/* 1. Imports & Global Resets */
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@300;400;700&display=swap');
+
 [data-testid="stAppViewContainer"] { background-color: #000000 !important; }
 [data-testid="stHeader"] { background: transparent !important; }
-p, span, label, h1, h2, h3, .stMarkdown, div[data-testid="stMarkdownContainer"] p { color: white !important; }
+
+/* 2. Text Styling */
+p, span, label, h1, h2, h3, .stMarkdown, div[data-testid="stMarkdownContainer"] p { 
+    color: white !important; 
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* 3. Brand Header */
 .brand-container { text-align: center; width: 100%; display: block; }
-.brand-title { color: #D4AF37 !important; font-family: 'Bebas Neue', cursive; letter-spacing: 4px; line-height: 1.1; }
+.brand-title { 
+    color: #D4AF37 !important; 
+    font-family: 'Bebas Neue', cursive; 
+    letter-spacing: 4px; 
+    line-height: 1.1; 
+}
+
 @media (min-width: 768px) { .brand-title { font-size: 4rem !important; } }
 @media (max-width: 767px) { .brand-title { font-size: 2rem !important; } }
-.brand-sub { text-align: center; color: #555 !important; font-size: 0.85rem; text-transform: uppercase; margin-top: 5px; margin-bottom: 25px; }
+
+.brand-sub { 
+    text-align: center; 
+    color: #555 !important; 
+    font-size: 0.85rem; 
+    text-transform: uppercase; 
+    margin-top: 5px; 
+    margin-bottom: 25px; 
+}
 .brand-sub a { color: #D4AF37 !important; text-decoration: none; font-weight: 700; }
-div[data-baseweb="input"], div[data-baseweb="select"], .stTextArea textarea { border: 1px solid #D4AF37 !important; border-radius: 4px !important; background-color: #0f0f0f !important; color: white !important; }
-div.stButton > button { background-color: transparent !important; color: #D4AF37 !important; border: 2px solid #D4AF37 !important; font-family: 'Bebas Neue', cursive; font-size: 1.2rem !important; width: 100%; }
-div.stButton > button:hover { background-color: #D4AF37 !important; color: #000 !important; }
+
+/* 4. Form Inputs & Selects */
+div[data-baseweb="input"], div[data-baseweb="select"], .stTextArea textarea { 
+    border: 1px solid #D4AF37 !important; 
+    border-radius: 4px !important; 
+    background-color: #0f0f0f !important; 
+    color: white !important; 
+}
+
+/* 5. Gold Custom Buttons */
+div.stButton > button { 
+    background-color: transparent !important; 
+    color: #D4AF37 !important; 
+    border: 2px solid #D4AF37 !important; 
+    font-family: 'Bebas Neue', cursive; 
+    font-size: 1.2rem !important; 
+    width: 100%; 
+    transition: 0.3s;
+}
+div.stButton > button:hover { 
+    background-color: #D4AF37 !important; 
+    color: #000 !important; 
+}
+
+/* 6. SVG & UI Cleanup (Removes the anchor icons) */
+svg { display: none !important; }
 footer { visibility: hidden; }
+
+/* 7. Floating Last Updated Timestamp (Bottom Right) */
+.floating-footer {
+    position: fixed;
+    bottom: 15px;
+    right: 15px;
+    z-index: 1000;
+    font-family: 'Montserrat', sans-serif;
+    color: #555 !important;
+    font-size: 0.7rem;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    pointer-events: none;
+}
 </style>
 """
 
 def apply_ui():
-    st.markdown(VAULT_CSS, unsafe_allow_html=True)
-    # Added footer div to the brand container
+    # Adding a rule to hide SVGs globally within the app
+    CLEAN_VAULT_CSS = VAULT_CSS + "\n div svg { display: none !important; }"
+    
+    st.markdown(CLEAN_VAULT_CSS, unsafe_allow_html=True)
     st.markdown(f'''
         <div class="brand-container">
-            <h1 class="brand-title">FAB VAULT</h1>
+            <h1 class="brand-title">FAB Vault</h1>
             <p class="brand-sub">by <a href="https://github.com/GenesisGran" target="_blank">GenesisGran</a></p>
         </div>
     ''', unsafe_allow_html=True)
-    
-    # Adding the footer at the bottom of the sidebar or page
-    st.sidebar.markdown("---")
-    st.sidebar.caption(f"Vault Data Last Updated: {LAST_UPDATED}")
+
+    st.markdown(f'<div class="floating-footer">LAST UPDATED: {LAST_UPDATED}</div>', unsafe_allow_html=True)
 
 def api_request(method, endpoint, headers, json=None, params=None):
     url = f"{URL}/rest/v1/{endpoint}"
