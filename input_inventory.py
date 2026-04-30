@@ -96,8 +96,15 @@ div.stButton > button:hover {
     color: #000 !important; 
 }
 
-/* 6. SVG & UI Cleanup (Removes the anchor icons) */
-svg { display: none !important; }
+/* 6. Targeted UI Cleanup */
+/* This specifically hides only the header anchor/link icons */
+[data-testid="stHeaderActionElements"], 
+.stHeader a svg, 
+h1 a svg, 
+h2 a svg, 
+h3 a svg { 
+    display: none !important; 
+}
 footer { visibility: hidden; }
 
 /* 7. Floating Last Updated Timestamp (Bottom Right) */
