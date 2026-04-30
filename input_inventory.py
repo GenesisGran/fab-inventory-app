@@ -28,6 +28,7 @@ except Exception:
 
 SERVICE_KEY: str = st.secrets.get("SUPABASE_SERVICE_KEY", ANON_KEY)
 ADMIN_USERNAME: str = "ADMIN"
+LAST_UPDATED: str = "April 29, 2026"
 
 HEADERS_ANON = {"apikey": ANON_KEY, "Authorization": f"Bearer {ANON_KEY}", "Content-Type": "application/json"}
 HEADERS_ADMIN = {"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}", "Content-Type": "application/json"}
@@ -57,7 +58,17 @@ footer { visibility: hidden; }
 
 def apply_ui():
     st.markdown(VAULT_CSS, unsafe_allow_html=True)
-    st.markdown('<div class="brand-container"><h1 class="brand-title">FAB INVENTORY TOOL</h1><p class="brand-sub">by <a href="https://github.com/GenesisGran" target="_blank">GenesisGran</a></p></div>', unsafe_allow_html=True)
+    # Added footer div to the brand container
+    st.markdown(f'''
+        <div class="brand-container">
+            <h1 class="brand-title">FAB VAULT</h1>
+            <p class="brand-sub">by <a href="https://github.com/GenesisGran" target="_blank">GenesisGran</a></p>
+        </div>
+    ''', unsafe_allow_html=True)
+    
+    # Adding the footer at the bottom of the sidebar or page
+    st.sidebar.markdown("---")
+    st.sidebar.caption(f"Vault Data Last Updated: {LAST_UPDATED}")
 
 def api_request(method, endpoint, headers, json=None, params=None):
     url = f"{URL}/rest/v1/{endpoint}"
@@ -160,19 +171,43 @@ with tabs[0]:
         q = st.number_input("Qty", value=1, step=1)
         if st.form_submit_button("Update Vault"):
             if c_id:
-                api_request("POST", "inventories", HEADERS_ANON, json={"print_id": f"{c_id}-{FOIL_OPTIONS[f_type]}", "qty_change": int(q), "username": st.session_state.username})
-                st.success(f"Added {c_id}")
+                # Capture the response
+                response = api_request("POST", "inventories", HEADERS_ANON, 
+                                      json={"print_id": f"{c_id}-{FOIL_OPTIONS[f_type]}", 
+                                            "qty_change": int(q), 
+                                            "username": st.session_state.username})
+                # Check response logic
+                if response is not None:
+                    st.success(f"Added {c_id}")
+                else:
+                    st.error("Invalid Entry: Check Card ID or connection.")
 
 with tabs[1]:
     bulk = st.text_area("Format: ID FOIL QTY")
     if st.button("Process Batch"):
         if bulk:
-            for line in bulk.strip().split("\n"):
+            success_count = 0
+            error_occurred = False
+            lines = bulk.strip().split("\n")
+            
+            for line in lines:
                 parts = line.split()
                 if len(parts) >= 3:
                     f = BULK_FOIL_MAP.get(parts[1].lower(), "Regular")
-                    api_request("POST", "inventories", HEADERS_ANON, json={"print_id": f"{parts[0].upper()}-{f}", "qty_change": int(parts[2]), "username": st.session_state.username})
-            st.success("Batch Synced.")
+                    response = api_request("POST", "inventories", HEADERS_ANON, 
+                                          json={"print_id": f"{parts[0].upper()}-{f}", 
+                                                "qty_change": int(parts[2]), 
+                                                "username": st.session_state.username})
+                    if response is not None:
+                        success_count += 1
+                    else:
+                        error_occurred = True
+            
+            # Final batch feedback
+            if success_count > 0:
+                st.success(f"Batch Synced: {success_count} cards added.")
+            if error_occurred:
+                st.error("Some entries failed: Check Card IDs or connection.")
 
 with tabs[2]:
     if st.button("Refresh Inventory"): st.rerun()
