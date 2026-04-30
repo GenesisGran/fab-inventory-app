@@ -127,7 +127,7 @@ footer { visibility: hidden; }
 
 def apply_ui():
     # Adding a rule to hide SVGs globally within the app
-    CLEAN_VAULT_CSS = VAULT_CSS + "\n div svg { display: none !important; }"
+    CLEAN_VAULT_CSS = VAULT_CSS
     
     st.markdown(CLEAN_VAULT_CSS, unsafe_allow_html=True)
     st.markdown(f'''
