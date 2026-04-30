@@ -38,4 +38,3 @@ The app leverages specialized **SQL Views** that merge transaction data with car
 To maintain agility as an MVP, user credentials are currently handled via a simple management system.
 * **Phase 2:** Implement **Argon2 password hashing**.
 * **Phase 3:** Transition to **JWT session management** for production-grade security.
-* **Phase 4:** Integrate TCGPlayer API for real-time portfolio valuation.
