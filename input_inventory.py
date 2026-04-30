@@ -111,7 +111,7 @@ footer { visibility: hidden; }
 .floating-footer {
     position: fixed;
     bottom: 15px;
-    right: 15px;
+    left: 15px;
     z-index: 1000;
     font-family: 'Montserrat', sans-serif;
     color: #555 !important;
