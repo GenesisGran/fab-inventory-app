@@ -132,7 +132,7 @@ def apply_ui():
     st.markdown(CLEAN_VAULT_CSS, unsafe_allow_html=True)
     st.markdown(f'''
         <div class="brand-container">
-            <h1 class="brand-title">FAB Vault</h1>
+            <h1 class="brand-title">FAB Inventory Tool</h1>
             <p class="brand-sub">by <a href="https://github.com/GenesisGran" target="_blank">GenesisGran</a></p>
         </div>
     ''', unsafe_allow_html=True)
