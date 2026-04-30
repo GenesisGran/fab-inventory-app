@@ -289,7 +289,7 @@ with tabs[2]:
 
 if st.session_state.username == ADMIN_USERNAME and len(tabs) >= 4:
     with tabs[3]:
-        if st.button("New Key"):
+        if st.button("Generate Key"):
             k = "".join(random.choices(string.ascii_uppercase + string.digits, k=12))
             api_request("POST", "invites", HEADERS_ADMIN, json={"code": k, "is_used": False})
             st.success(f"Key: {k}")
